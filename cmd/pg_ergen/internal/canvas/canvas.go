@@ -56,13 +56,28 @@ func (c *Canvas) linkage() {
 	}
 }
 
-func (c *Canvas) extractSingle(space int) (w int, h int, group []*relation) {
+type singleNodesInfo struct {
+	w, h  int
+	group []*relation
+}
+
+func (n *singleNodesInfo) draw(s *svg.SVG, dx, dy int, space int) {
+	x := 0
+	for _, g := range n.group {
+		e := g.entity
+		e.Draw(s, dx+x, dy)
+		x += e.view.w + space
+	}
+}
+
+func (c *Canvas) extractSingle(space int) (singleNodes *singleNodesInfo) {
 	if len(c.groups) == 0 {
 		return
 	}
 
-	w = 0
-	h = 0
+	w := 0
+	h := 0
+	group := []*relation{}
 	ng := []*relation{}
 	for _, g := range c.groups {
 		if len(g.left) == 0 && len(g.right) == 0 {
@@ -81,7 +96,7 @@ func (c *Canvas) extractSingle(space int) (w int, h int, group []*relation) {
 		}
 	}
 
-	return
+	return &singleNodesInfo{w, h, group}
 }
 
 type levelBox struct {
@@ -91,18 +106,54 @@ type levelBox struct {
 	g  []*relation
 }
 
-type region struct {
+type regionInfo struct {
 	w, h   int
 	levels []*levelBox
 }
 
-func (c *Canvas) extractRegion(space int) (w int, h int, levels []*levelBox) {
+func (ri *regionInfo) draw(s *svg.SVG, dx, dy int, space int) {
+	levels := ri.levels
+	size := len(levels)
+	x := 0
+	for i, lvl := range levels {
+		y := dy
+		nx := x + lvl.w + space
+		for _, g := range lvl.g {
+			e := g.entity
+			e.Draw(s, x, y)
+			for _, r := range e.rows {
+				if r.relationaly.valid() {
+					x1 := x + r.frame.x + r.frame.w
+					y1 := y + r.frame.y + r.frame.h>>1
+					rnm := r.relationaly.fullname()
+					ny := dy
+					for li := i + 1; li < size; li += 1 {
+						for _, rg := range levels[li].g {
+							re := rg.entity
+							c := re.collision[rnm]
+							if c != nil {
+								x2 := nx + c.x
+								y2 := ny + c.y + c.h>>1
+								s.Line(x1, y1, x2, y2, e.lineStyle)
+							}
+							ny += re.view.h + space
+						}
+					}
+				}
+			}
+			y += e.view.h + space
+		}
+		x = nx
+	}
+}
+
+func (c *Canvas) extractRegion(space int) (region *regionInfo) {
 	if len(c.groups) == 0 {
 		return
 	}
 
-	w = 0
-	h = 0
+	w := 0
+	h := 0
 	base := c.groups[0]
 	base.use = true
 
@@ -151,6 +202,7 @@ func (c *Canvas) extractRegion(space int) (w int, h int, levels []*levelBox) {
 	}
 	c.groups = ng
 
+	levels := []*levelBox{}
 	for offset, r := range l {
 		tw := 0
 		th := 0
@@ -171,23 +223,30 @@ func (c *Canvas) extractRegion(space int) (w int, h int, levels []*levelBox) {
 
 	sort.Slice(levels, func(i, j int) bool { return levels[i].lv < levels[j].lv })
 
-	return
+	return &regionInfo{w, h, levels}
 }
 
 func (c *Canvas) OutputSVG(o io.Writer) {
 	c.linkage()
 
 	space := 48
-	ws, hs, group := c.extractSingle(space)
+	singleNodes := c.extractSingle(space)
 
-	regions := []*region{}
-	for len(c.groups) > 0 {
-		w, h, levels := c.extractRegion(space)
-		regions = append(regions, &region{w, h, levels})
+	regions := []*regionInfo{}
+	for {
+		r := c.extractRegion(space)
+		if r == nil {
+			break
+		}
+		regions = append(regions, r)
 	}
 
-	w := ws
-	h := hs
+	w := 0
+	h := 0
+	if singleNodes != nil {
+		w = singleNodes.w
+		h = singleNodes.h
+	}
 	for i := range regions {
 		w2 := regions[i].w
 		h2 := regions[i].h
@@ -201,45 +260,14 @@ func (c *Canvas) OutputSVG(o io.Writer) {
 	s.Start(w, h)
 	s.Rect(0, 0, w, h, c.bgStyle)
 
-	x := 0
-	for _, gl := range group {
-		e := gl.entity
-		e.Draw(s, x, 0)
-		x += e.view.w + space
+	regionY := 0
+	if singleNodes != nil {
+		singleNodes.draw(s, 0, 0, space)
+		regionY += singleNodes.h + space
 	}
 
-	regionY := hs + space
 	for _, region := range regions {
-		levels := region.levels
-		x = 0
-		for ln, lv := range levels {
-			y := regionY
-			nx := x + lv.w + space
-			for _, g := range lv.g {
-				e := g.entity
-				e.Draw(s, x, y)
-				for _, r := range e.rows {
-					if r.relationaly.valid() {
-						x1 := x + r.frame.x + r.frame.w
-						y1 := y + r.frame.y + r.frame.h>>1
-						rnm := r.relationaly.fullname()
-						ny := regionY
-						for _, rg := range levels[ln+1].g {
-							re := rg.entity
-							c := re.collision[rnm]
-							if c != nil {
-								x2 := nx + c.x
-								y2 := ny + c.y + c.h>>1
-								s.Line(x1, y1, x2, y2, e.lineStyle)
-							}
-							ny += re.view.h + space
-						}
-					}
-				}
-				y += e.view.h + space
-			}
-			x = nx
-		}
+		region.draw(s, 0, regionY, space)
 		regionY += region.h + space
 	}
 
