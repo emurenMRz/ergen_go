@@ -66,12 +66,7 @@ func NewEntity(schema string, name string, comment string) *Entity {
 			"font-family": "monospace",
 			"font-size":   fmt.Sprintf("%dpx", height),
 		}.String(),
-		typeFont: StyleMap{
-			"fill":        "#6b3400",
-			"stroke":      "none",
-			"font-family": "monospace",
-			"font-size":   fmt.Sprintf("%dpx", height),
-		}.String(),
+		typeFont: `fill="#6b3400"`,
 	}
 }
 
@@ -167,7 +162,8 @@ func (e *Entity) Build() {
 }
 
 func (e *Entity) Draw(s *svg.SVG, dx int, dy int) {
-	s.Text(dx+e.tiltePos.x, dy+e.tiltePos.y, e.title, e.font)
+	s.Group(`id="`+e.name+`"`, e.font)
+	s.Text(dx+e.tiltePos.x, dy+e.tiltePos.y, e.title)
 
 	if !e.isChildren {
 		s.Rect(dx+e.frame.x, dy+e.frame.y, e.frame.w, e.frame.h, e.lineStyle)
@@ -184,14 +180,15 @@ func (e *Entity) Draw(s *svg.SVG, dx int, dy int) {
 				r := c.notNull
 				s.Rect(dx+r.x, dy+r.y, r.w, r.h, e.lineStyle)
 			}
-			s.Text(dx+c.logicalName.pt.x, dy+c.logicalName.pt.y, c.logicalName.nm, e.font)
-			s.Text(dx+c.physicalName.pt.x, dy+c.physicalName.pt.y, c.physicalName.nm, e.font)
+			s.Text(dx+c.logicalName.pt.x, dy+c.logicalName.pt.y, c.logicalName.nm)
+			s.Text(dx+c.physicalName.pt.x, dy+c.physicalName.pt.y, c.physicalName.nm)
 			s.Text(dx+c.dataType.pt.x, dy+c.dataType.pt.y, c.dataType.nm, e.typeFont)
 		}
 	}
 
 	drawRow(e.pkeys)
 	drawRow(e.field)
+	s.Gend()
 }
 
 func (e *Entity) getForeignKey() bool {

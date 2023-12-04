@@ -1,6 +1,7 @@
 package canvas
 
 import (
+	"fmt"
 	"io"
 	"sort"
 
@@ -62,12 +63,18 @@ type singleNodesInfo struct {
 }
 
 func (n *singleNodesInfo) draw(s *svg.SVG, dx, dy int, space int) {
+	id := "single-nodes"
+	s.Def()
+	s.Gid(id)
 	x := 0
 	for _, g := range n.group {
 		e := g.entity
-		e.Draw(s, dx+x, dy)
+		e.Draw(s, x, 0)
 		x += e.view.w + space
 	}
+	s.Gend()
+	s.DefEnd()
+	s.Use(dx, dy, "#"+id)
 }
 
 func (c *Canvas) extractSingle(space int) (singleNodes *singleNodesInfo) {
@@ -111,12 +118,17 @@ type regionInfo struct {
 	levels []*levelBox
 }
 
+var seq int = 0
+
 func (ri *regionInfo) draw(s *svg.SVG, dx, dy int, space int) {
+	id := fmt.Sprintf("region-%d", seq)
+	s.Def()
+	s.Gid(id)
 	levels := ri.levels
 	size := len(levels)
 	x := 0
 	for i, lvl := range levels {
-		y := dy
+		y := 0
 		nx := x + lvl.w + space
 		for _, g := range lvl.g {
 			e := g.entity
@@ -126,7 +138,7 @@ func (ri *regionInfo) draw(s *svg.SVG, dx, dy int, space int) {
 					x1 := x + r.frame.x + r.frame.w
 					y1 := y + r.frame.y + r.frame.h>>1
 					rnm := r.relationaly.fullname()
-					ny := dy
+					ny := 0
 					for li := i + 1; li < size; li += 1 {
 						for _, rg := range levels[li].g {
 							re := rg.entity
@@ -145,6 +157,9 @@ func (ri *regionInfo) draw(s *svg.SVG, dx, dy int, space int) {
 		}
 		x = nx
 	}
+	s.Gend()
+	s.DefEnd()
+	s.Use(dx, dy, "#"+id)
 }
 
 func (c *Canvas) extractRegion(space int) (region *regionInfo) {
