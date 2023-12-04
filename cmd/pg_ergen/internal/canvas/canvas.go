@@ -129,7 +129,6 @@ func (ri *regionInfo) draw(s *svg.SVG, dx, dy int, space int) {
 	x := 0
 	for i, lvl := range levels {
 		y := 0
-		nx := x + lvl.w + space
 		for _, g := range lvl.g {
 			e := g.entity
 			e.Draw(s, x, y)
@@ -138,24 +137,30 @@ func (ri *regionInfo) draw(s *svg.SVG, dx, dy int, space int) {
 					x1 := x + r.frame.x + r.frame.w
 					y1 := y + r.frame.y + r.frame.h>>1
 					rnm := r.relationaly.fullname()
-					ny := 0
+					nx := x + lvl.w + space
+
+				search:
 					for li := i + 1; li < size; li += 1 {
-						for _, rg := range levels[li].g {
+						curlvl := levels[li]
+						ny := 0
+						for _, rg := range curlvl.g {
 							re := rg.entity
 							c := re.collision[rnm]
 							if c != nil {
 								x2 := nx + c.x
 								y2 := ny + c.y + c.h>>1
 								s.Line(x1, y1, x2, y2, e.lineStyle)
+								break search
 							}
 							ny += re.view.h + space
 						}
+						nx += curlvl.w + space
 					}
 				}
 			}
 			y += e.view.h + space
 		}
-		x = nx
+		x = x + lvl.w + space
 	}
 	s.Gend()
 	s.DefEnd()
