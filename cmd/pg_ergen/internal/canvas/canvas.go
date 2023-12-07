@@ -127,29 +127,53 @@ func (ri *regionInfo) draw(s *svg.SVG, dx, dy int, space int) {
 	levels := ri.levels
 	size := len(levels)
 	x := 0
+	half := space >> 1
 	for i, lvl := range levels {
+		cpx := x + lvl.w + space
 		y := 0
 		for _, g := range lvl.g {
 			e := g.entity
-			e.Draw(s, x, y)
+			ml1 := (lvl.w + space - e.view.w) / 2
+			e.Draw(s, x+ml1, y+half)
 			for _, r := range e.rows {
 				if r.relationaly.valid() {
-					x1 := x + r.frame.x + r.frame.w
-					y1 := y + r.frame.y + r.frame.h>>1
+					x1 := ml1 + x + r.frame.x + r.frame.w
+					y1 := half + y + r.frame.y + r.frame.h>>1
 					rnm := r.relationaly.fullname()
 					nx := x + lvl.w + space
+					hh := 0
 
 				search:
 					for li := i + 1; li < size; li += 1 {
 						curlvl := levels[li]
+						if hh < curlvl.h+half {
+							hh = curlvl.h + half
+						}
 						ny := 0
 						for _, rg := range curlvl.g {
 							re := rg.entity
+							ml2 := (curlvl.w + space - re.view.w) / 2
 							c := re.collision[rnm]
 							if c != nil {
-								x2 := nx + c.x
-								y2 := ny + c.y + c.h>>1
-								s.Line(x1, y1, x2, y2, e.lineStyle)
+								x2 := ml2 + nx + c.x
+								y2 := half + ny + c.y + c.h>>1
+								if cpx == nx {
+									s.Bezier(x1, y1, cpx, y1, nx, y2, x2, y2, e.lineStyle)
+								} else {
+									hhh := 0
+									cy := 0
+									if y1 < y2 {
+										cy = (y2-y1)/2 + y1
+									} else {
+										cy = (y1-y2)/2 + y2
+									}
+									if cy > hh/2 {
+										hhh = hh
+									}
+									s.Bezier(x1, y1, cpx, y1, cpx, hhh, cpx+half, hhh, e.lineStyle)
+									s.Bezier(x2, y2, nx, y2, nx, hhh, nx-half, hhh, e.lineStyle)
+									s.Line(cpx+half, hhh, nx-half, hhh, e.lineStyle)
+								}
 								break search
 							}
 							ny += re.view.h + space
@@ -243,7 +267,7 @@ func (c *Canvas) extractRegion(space int) (region *regionInfo) {
 
 	sort.Slice(levels, func(i, j int) bool { return levels[i].lv < levels[j].lv })
 
-	return &regionInfo{w, h, levels}
+	return &regionInfo{w + space, h + space, levels}
 }
 
 func (c *Canvas) OutputSVG(o io.Writer) {
