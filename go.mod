@@ -1,8 +1,12 @@
 module github.com/emurenMRz/ergen_go
 
-go 1.21.1
+go 1.24.0
 
-require github.com/ajstarks/svgo v0.0.0-20211024235047-1546f124cd8b
+require (
+	github.com/ajstarks/svgo v0.0.0-20211024235047-1546f124cd8b
+	gorm.io/driver/postgres v1.5.3
+	gorm.io/gorm v1.25.5
+)
 
 require (
 	github.com/jackc/pgpassfile v1.0.0 // indirect
@@ -10,8 +14,6 @@ require (
 	github.com/jackc/pgx/v5 v5.4.3 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
-	golang.org/x/crypto v0.9.0 // indirect
-	golang.org/x/text v0.9.0 // indirect
-	gorm.io/driver/postgres v1.5.3 // indirect
-	gorm.io/gorm v1.25.5 // indirect
+	golang.org/x/crypto v0.45.0 // indirect
+	golang.org/x/text v0.31.0 // indirect
 )
